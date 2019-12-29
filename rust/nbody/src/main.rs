@@ -97,7 +97,7 @@ unsafe fn offset_Momentum(bodies: *mut body) {
 unsafe fn output_Energy(bodies: *mut body) {
     let mut energy: f64 = 0.;
     for i in 0..BODIES_COUNT {
-        energy += (*bodies.add(i)).mass
+        energy += 0.5 * (*bodies.add(i)).mass
             * ((*bodies.add(i)).velocity[0] * (*bodies.add(i)).velocity[0]
                 + (*bodies.add(i)).velocity[1] * (*bodies.add(i)).velocity[1]
                 + (*bodies.add(i)).velocity[2] * (*bodies.add(i)).velocity[2]);
@@ -118,7 +118,7 @@ unsafe fn output_Energy(bodies: *mut body) {
                 / f64::sqrt(
                     position_Delta[0] * position_Delta[0]
                         + position_Delta[1] * position_Delta[1]
-                        + position_Delta[2] * position_Delta[2],
+                        + position_Delta[2] * position_Delta[2]
                 )
         }
     }

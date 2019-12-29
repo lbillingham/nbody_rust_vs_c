@@ -3,13 +3,15 @@ ifndef NUM_STEPS
 endif
 SRC_FILE=nbody.gcc-8.c
 SRC_PATH=./$(SRC_FILE)
-BIN_FILE=nbody.clang-8.bench.run
+BIN_FILE=./nbody.clang-8.bench.run
 OPT_LVL=3
 TARGET_CPU=native
 CGN_UNITS=1
 
+.DEFAULT_GOAL := build_then_run
+
 clean:
-	-rm $(BIN_FILE)
+	rm $(BIN_FILE) | true
 
 build: clean
 	clang -O$(OPT_LVL) \
@@ -19,5 +21,7 @@ build: clean
 		-lm \
     	$(SRC_PATH) -o $(BIN_FILE)
 
-run: build
-	./$(BIN_FILE) $(NUM_STEPS)
+build_then_run: build run
+
+run:
+	$(BIN_FILE) $(NUM_STEPS)

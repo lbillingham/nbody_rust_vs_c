@@ -3,13 +3,15 @@ ifndef NUM_STEPS
 endif
 SRC_FILE=main.rs
 SRC_PATH=./src/$(SRC_FILE)
-BIN_FILE=nbody-rust-1.run
+BIN_FILE=./nbody-rust-1.run
 OPT_LVL=3
 TARGET_CPU=native
 CGN_UNITS=1
 
+.DEFAULT_GOAL := build_then_run
+
 clean:
-	-rm $(BIN_FILE)
+	rm $(BIN_FILE) | true
 
 build: clean
 	rustc -C opt-level=$(OPT_LVL) \
@@ -17,5 +19,7 @@ build: clean
 		-C codegen-units=$(CGN_UNITS) \
     	$(SRC_PATH) -o $(BIN_FILE)
 
-run: build
-	./$(BIN_FILE) $(NUM_STEPS)
+build_then_run: build run
+
+run:
+	$(BIN_FILE) $(NUM_STEPS)

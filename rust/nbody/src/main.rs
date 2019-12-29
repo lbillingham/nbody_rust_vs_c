@@ -81,6 +81,16 @@ static mut solar_Bodies: [body; BODIES_COUNT] = [
     }
 ];
 
+unsafe fn offset_Momentum (bodies: *mut body) {
+    for i in 0..BODIES_COUNT {
+        for m in 0..3 {
+            (*bodies.add(0)).velocity[m] -= (*bodies.add(i)).velocity[m] * ((*bodies.add(i)).mass) / SOLAR_MASS;
+
+        }
+    }
+
+}
+
 fn main() {
     println!("Hello, world!");
 }

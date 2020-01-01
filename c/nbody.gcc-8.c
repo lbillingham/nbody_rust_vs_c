@@ -226,9 +226,12 @@ static void output_Energy(body bodies[]){
 
 
 int main(int argc, char *argv[]){
+    int num_steps=atoi(argv[1]);
     offset_Momentum(solar_Bodies);
+    printf("initial energy: ");
     output_Energy(solar_Bodies);
-    for(intnative_t n=atoi(argv[1]); n--; advance(solar_Bodies));
+    for(intnative_t n=num_steps; n--; advance(solar_Bodies));
+    printf("Energy after %i steps: ", num_steps);
     output_Energy(solar_Bodies);
 }
 

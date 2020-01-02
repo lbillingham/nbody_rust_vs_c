@@ -122,17 +122,42 @@ fn output_Energy(bodies: &mut [body; BODIES_COUNT]) {
     println!("{:.9}", energy);
 }
 
-unsafe fn advance(bodies: *mut body) {
+unsafe fn advance(bodies: &mut [body; BODIES_COUNT]) {
     const INTERACTIONS_COUNT: usize = (BODIES_COUNT * (BODIES_COUNT - 1)) / 2;
     const ROUNDED_INTERACTIONS_COUNT: usize = INTERACTIONS_COUNT + (INTERACTIONS_COUNT % 2);
 
-    #[repr(align(16))]
     #[derive(Copy, Clone)]
-    struct Align16([f64; ROUNDED_INTERACTIONS_COUNT]);
+    #[repr(C)]
+    union Interactions {
+        scalars: [f64; ROUNDED_INTERACTIONS_COUNT],
+        vectors: [__m128d; ROUNDED_INTERACTIONS_COUNT / 2],
+    }
 
-    static mut position_Deltas: [Align16; 3] = [Align16([0.; ROUNDED_INTERACTIONS_COUNT]); 3];
+    impl Interactions {
+        // Returns a safe reference to storage as `f64`s
+        pub fn as_mut_scalars(&mut self) -> &mut [f64; ROUNDED_INTERACTIONS_COUNT] {
+            // Safety: the in-memory representation of `f64` and `__m128d` is
+            // compatible, so access to the union members is safe in any
+            // order.
+            unsafe { &mut self.scalars }
+        }
 
-    static mut magnitudes: Align16 = Align16([0.; ROUNDED_INTERACTIONS_COUNT]);
+        // Returns a safe reference to storage as `__m128`s
+        pub fn as_mut_vectors(&mut self) -> &mut [__m128d; ROUNDED_INTERACTIONS_COUNT / 2] {
+            // Safety: the in-memory representation of `f64` and `__m128d` is
+            // compatible, so access to the union members is safe in any
+            // order.
+            unsafe { &mut self.vectors }
+        }
+    }
+
+    static mut position_Deltas: [Interactions; 3] = [Interactions {
+        scalars: [0.; ROUNDED_INTERACTIONS_COUNT],
+    }; 3];
+
+    static mut magnitudes: Interactions = Interactions {
+        scalars: [0.; ROUNDED_INTERACTIONS_COUNT],
+    };
 
     // Calc position differences between each interacting body pair
     {
@@ -140,8 +165,8 @@ unsafe fn advance(bodies: *mut body) {
         for i in 0..BODIES_COUNT - 1 {
             for j in i + 1..BODIES_COUNT {
                 for m in 0..3 {
-                    position_Deltas[m].0[k] =
-                        (*bodies.add(i)).position[m] - (*bodies.add(j)).position[m];
+                    position_Deltas[m].as_mut_scalars()[k] =
+                        bodies[i].position[m] - bodies[j].position[m];
                 }
                 k += 1;
             }
@@ -150,11 +175,9 @@ unsafe fn advance(bodies: *mut body) {
     // Calc force magnitudes between each bodies
     //      load 2 bodies' position differences into position_Delta
     for i in 0..ROUNDED_INTERACTIONS_COUNT / 2 {
-        let mut position_Delta = [mem::MaybeUninit::<__m128d>::uninit(); 3];
+        let mut position_Delta = [_mm_setzero_pd(); 3];
         for m in 0..3 {
-            position_Delta[m]
-                .as_mut_ptr()
-                .write(*(&position_Deltas[m].0 as *const f64 as *const __m128d).add(i))
+            position_Delta[m] = position_Deltas[m].as_mut_vectors()[i]
         }
         let position_Delta: [__m128d; 3] = mem::transmute(position_Delta);
 
@@ -181,12 +204,10 @@ unsafe fn advance(bodies: *mut body) {
                 ),
             );
         }
-        (magnitudes.0.as_mut_ptr() as *mut __m128d)
-            .add(i)
-            .write(_mm_mul_pd(
-                _mm_div_pd(_mm_set1_pd(0.01), distance_Squared),
-                distance_Reciprocal,
-            ));
+        magnitudes.as_mut_vectors()[i] = _mm_mul_pd(
+            _mm_div_pd(_mm_set1_pd(0.01), distance_Squared),
+            distance_Reciprocal,
+        );
     }
 
     // Update the  bodies' velocities
@@ -194,11 +215,13 @@ unsafe fn advance(bodies: *mut body) {
         let mut k = 0;
         for i in 0..BODIES_COUNT {
             for j in i + 1..BODIES_COUNT {
-                let i_mass_magnitude = (*bodies.add(i)).mass * magnitudes.0[k];
-                let j_mass_magnitude = (*bodies.add(j)).mass * magnitudes.0[k];
+                let i_mass_magnitude = bodies[i].mass * magnitudes.as_mut_scalars()[k];
+                let j_mass_magnitude = bodies[j].mass * magnitudes.as_mut_scalars()[k];
                 for m in 0..3 {
-                    (*bodies.add(i)).velocity[m] -= position_Deltas[m].0[k] * j_mass_magnitude;
-                    (*bodies.add(j)).velocity[m] += position_Deltas[m].0[k] * i_mass_magnitude;
+                    bodies[i].velocity[m] -=
+                        position_Deltas[m].as_mut_scalars()[k] * j_mass_magnitude;
+                    bodies[j].velocity[m] +=
+                        position_Deltas[m].as_mut_scalars()[k] * i_mass_magnitude;
                 }
                 k += 1;
             }
@@ -208,7 +231,7 @@ unsafe fn advance(bodies: *mut body) {
     // Update the  bodies' positions
     for i in 0..BODIES_COUNT {
         for m in 0..3 {
-            (*bodies.add(i)).position[m] += TIMESTEP * (*bodies.add(i)).velocity[m];
+            bodies[i].position[m] += TIMESTEP * bodies[i].velocity[m];
         }
     }
 }
@@ -220,7 +243,7 @@ fn main() {
         output_Energy(&mut solar_Bodies);
         let num_steps = std::env::args().nth(1).unwrap().parse().unwrap();
         for _ in 0..num_steps {
-            advance(solar_Bodies.as_mut_ptr())
+            advance(&mut solar_Bodies)
         }
         print!("Energy after {} steps: ", num_steps);
         output_Energy(&mut solar_Bodies);

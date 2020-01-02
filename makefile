@@ -17,3 +17,13 @@ run_all: build_all
 	@echo vvvvvv Rust results vvvvvv
 	$(MAKE_BIN) -C $(RUST_DIR) run
 	@echo ^^^^^^ Rust results ^^^^^^
+
+measure_speeds:
+	@echo
+	@echo vvvvvv C results vvvvvv
+	$(MAKE_BIN) -C $(C_DIR) measure_speed
+	@echo ^^^^^^ C results ^^^^^^
+	@echo
+	@echo vvvvvv Rust results vvvvvv
+	$(MAKE_BIN) -C $(RUST_DIR) measure_speed
+	@echo ^^^^^^ Rust results ^^^^^^

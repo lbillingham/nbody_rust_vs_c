@@ -23,3 +23,6 @@ build_then_run: build run
 
 run:
 	$(BIN_FILE) $(NUM_STEPS)
+
+measure_speed:
+	hyperfine "$(BIN_FILE) $(NUM_STEPS)"

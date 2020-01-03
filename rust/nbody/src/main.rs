@@ -19,7 +19,7 @@ const DAYS_PER_YEAR: f64 = 365.24;
 const TIMESTEP: f64 = 0.01; // in days... right??
 const BODIES_COUNT: usize = 5;
 
-static mut solar_Bodies: [body; BODIES_COUNT] = [
+const STARTING_STATE: [body; BODIES_COUNT] = [
     body {
         // Sun
         mass: SOLAR_MASS,
@@ -239,6 +239,8 @@ fn advance(
 }
 
 fn main() {
+    let mut solar_Bodies = STARTING_STATE;
+
     let mut position_Deltas: [Interactions; 3] = [Interactions {
         scalars: [0.; ROUNDED_INTERACTIONS_COUNT],
     }; 3];
@@ -246,15 +248,13 @@ fn main() {
     let mut magnitudes: Interactions = Interactions {
         scalars: [0.; ROUNDED_INTERACTIONS_COUNT],
     };
-    unsafe {
-        offset_Momentum(&mut solar_Bodies);
-        print!("initial energy: ");
-        output_Energy(&mut solar_Bodies);
-        let num_steps = std::env::args().nth(1).unwrap().parse().unwrap();
-        for _ in 0..num_steps {
-            advance(&mut solar_Bodies, &mut position_Deltas, &mut magnitudes)
-        }
-        print!("Energy after {} steps: ", num_steps);
-        output_Energy(&mut solar_Bodies);
+    offset_Momentum(&mut solar_Bodies);
+    print!("initial energy: ");
+    output_Energy(&mut solar_Bodies);
+    let num_steps = std::env::args().nth(1).unwrap().parse().unwrap();
+    for _ in 0..num_steps {
+        advance(&mut solar_Bodies, &mut position_Deltas, &mut magnitudes)
     }
+    print!("Energy after {} steps: ", num_steps);
+    output_Energy(&mut solar_Bodies);
 }

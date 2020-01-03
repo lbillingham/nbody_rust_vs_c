@@ -6,7 +6,6 @@
 
 use std::arch::x86_64::*;
 use std::f64::consts::PI;
-use std::mem;
 
 #[repr(C)] // layout memory same as C, so same mem hacks work
 struct body {
@@ -175,7 +174,6 @@ unsafe fn advance(
         for m in 0..3 {
             position_Delta[m] = position_Deltas[m].as_mut_vectors()[i]
         }
-        let position_Delta: [__m128d; 3] = mem::transmute(position_Delta);
 
         let distance_Squared: __m128d = _mm_add_pd(
             _mm_add_pd(

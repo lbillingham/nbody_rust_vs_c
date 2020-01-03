@@ -122,43 +122,39 @@ fn output_Energy(bodies: &mut [body; BODIES_COUNT]) {
     println!("{:.9}", energy);
 }
 
-unsafe fn advance(bodies: &mut [body; BODIES_COUNT]) {
-    const INTERACTIONS_COUNT: usize = (BODIES_COUNT * (BODIES_COUNT - 1)) / 2;
-    const ROUNDED_INTERACTIONS_COUNT: usize = INTERACTIONS_COUNT + (INTERACTIONS_COUNT % 2);
+const INTERACTIONS_COUNT: usize = (BODIES_COUNT * (BODIES_COUNT - 1)) / 2;
+const ROUNDED_INTERACTIONS_COUNT: usize = INTERACTIONS_COUNT + (INTERACTIONS_COUNT % 2);
 
-    #[derive(Copy, Clone)]
-    #[repr(C)]
-    union Interactions {
-        scalars: [f64; ROUNDED_INTERACTIONS_COUNT],
-        vectors: [__m128d; ROUNDED_INTERACTIONS_COUNT / 2],
+#[derive(Copy, Clone)]
+#[repr(C)]
+union Interactions {
+    scalars: [f64; ROUNDED_INTERACTIONS_COUNT],
+    vectors: [__m128d; ROUNDED_INTERACTIONS_COUNT / 2],
+}
+
+impl Interactions {
+    // Returns a safe reference to storage as `f64`s
+    pub fn as_mut_scalars(&mut self) -> &mut [f64; ROUNDED_INTERACTIONS_COUNT] {
+        // Safety: the in-memory representation of `f64` and `__m128d` is
+        // compatible, so access to the union members is safe in any
+        // order.
+        unsafe { &mut self.scalars }
     }
 
-    impl Interactions {
-        // Returns a safe reference to storage as `f64`s
-        pub fn as_mut_scalars(&mut self) -> &mut [f64; ROUNDED_INTERACTIONS_COUNT] {
-            // Safety: the in-memory representation of `f64` and `__m128d` is
-            // compatible, so access to the union members is safe in any
-            // order.
-            unsafe { &mut self.scalars }
-        }
-
-        // Returns a safe reference to storage as `__m128`s
-        pub fn as_mut_vectors(&mut self) -> &mut [__m128d; ROUNDED_INTERACTIONS_COUNT / 2] {
-            // Safety: the in-memory representation of `f64` and `__m128d` is
-            // compatible, so access to the union members is safe in any
-            // order.
-            unsafe { &mut self.vectors }
-        }
+    // Returns a safe reference to storage as `__m128`s
+    pub fn as_mut_vectors(&mut self) -> &mut [__m128d; ROUNDED_INTERACTIONS_COUNT / 2] {
+        // Safety: the in-memory representation of `f64` and `__m128d` is
+        // compatible, so access to the union members is safe in any
+        // order.
+        unsafe { &mut self.vectors }
     }
+}
 
-    static mut position_Deltas: [Interactions; 3] = [Interactions {
-        scalars: [0.; ROUNDED_INTERACTIONS_COUNT],
-    }; 3];
-
-    static mut magnitudes: Interactions = Interactions {
-        scalars: [0.; ROUNDED_INTERACTIONS_COUNT],
-    };
-
+unsafe fn advance(
+    bodies: &mut [body; BODIES_COUNT],
+    position_Deltas: &mut [Interactions; 3],
+    magnitudes: &mut Interactions,
+) {
     // Calc position differences between each interacting body pair
     {
         let mut k = 0;
@@ -237,13 +233,20 @@ unsafe fn advance(bodies: &mut [body; BODIES_COUNT]) {
 }
 
 fn main() {
+    let mut position_Deltas: [Interactions; 3] = [Interactions {
+        scalars: [0.; ROUNDED_INTERACTIONS_COUNT],
+    }; 3];
+
+    let mut magnitudes: Interactions = Interactions {
+        scalars: [0.; ROUNDED_INTERACTIONS_COUNT],
+    };
     unsafe {
         offset_Momentum(&mut solar_Bodies);
         print!("initial energy: ");
         output_Energy(&mut solar_Bodies);
         let num_steps = std::env::args().nth(1).unwrap().parse().unwrap();
         for _ in 0..num_steps {
-            advance(&mut solar_Bodies)
+            advance(&mut solar_Bodies, &mut position_Deltas, &mut magnitudes)
         }
         print!("Energy after {} steps: ", num_steps);
         output_Energy(&mut solar_Bodies);

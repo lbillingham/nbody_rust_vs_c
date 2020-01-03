@@ -149,7 +149,8 @@ impl Interactions {
     }
 }
 
-unsafe fn advance(
+#[cfg(target_feature = "sse2")]
+fn advance(
     bodies: &mut [body; BODIES_COUNT],
     position_Deltas: &mut [Interactions; 3],
     magnitudes: &mut Interactions,
@@ -170,38 +171,45 @@ unsafe fn advance(
     // Calc force magnitudes between each bodies
     //      load 2 bodies' position differences into position_Delta
     for i in 0..ROUNDED_INTERACTIONS_COUNT / 2 {
-        let mut position_Delta = [_mm_setzero_pd(); 3];
+        let mut position_Delta = unsafe { [_mm_setzero_pd(); 3] };
         for m in 0..3 {
             position_Delta[m] = position_Deltas[m].as_mut_vectors()[i]
         }
 
-        let distance_Squared: __m128d = _mm_add_pd(
+        let distance_Squared: __m128d = unsafe {
             _mm_add_pd(
-                _mm_mul_pd(position_Delta[0], position_Delta[0]),
-                _mm_mul_pd(position_Delta[1], position_Delta[1]),
-            ),
-            _mm_mul_pd(position_Delta[2], position_Delta[2]),
-        );
+                _mm_add_pd(
+                    _mm_mul_pd(position_Delta[0], position_Delta[0]),
+                    _mm_mul_pd(position_Delta[1], position_Delta[1]),
+                ),
+                _mm_mul_pd(position_Delta[2], position_Delta[2]),
+            )
+        };
 
         // approx f64 sqrt by doing f32 sqrt then Newton Raphson
-        let mut distance_Reciprocal = _mm_cvtps_pd(_mm_rsqrt_ps(_mm_cvtpd_ps(distance_Squared)));
+        let mut distance_Reciprocal =
+            unsafe { _mm_cvtps_pd(_mm_rsqrt_ps(_mm_cvtpd_ps(distance_Squared))) };
 
         for _ in 0..2 {
-            distance_Reciprocal = _mm_sub_pd(
-                _mm_mul_pd(distance_Reciprocal, _mm_set1_pd(1.5)),
-                _mm_mul_pd(
+            distance_Reciprocal = unsafe {
+                _mm_sub_pd(
+                    _mm_mul_pd(distance_Reciprocal, _mm_set1_pd(1.5)),
                     _mm_mul_pd(
-                        _mm_mul_pd(_mm_set1_pd(0.5), distance_Squared),
-                        distance_Reciprocal,
+                        _mm_mul_pd(
+                            _mm_mul_pd(_mm_set1_pd(0.5), distance_Squared),
+                            distance_Reciprocal,
+                        ),
+                        _mm_mul_pd(distance_Reciprocal, distance_Reciprocal),
                     ),
-                    _mm_mul_pd(distance_Reciprocal, distance_Reciprocal),
-                ),
-            );
+                )
+            };
         }
-        magnitudes.as_mut_vectors()[i] = _mm_mul_pd(
-            _mm_div_pd(_mm_set1_pd(0.01), distance_Squared),
-            distance_Reciprocal,
-        );
+        magnitudes.as_mut_vectors()[i] = unsafe {
+            _mm_mul_pd(
+                _mm_div_pd(_mm_set1_pd(0.01), distance_Squared),
+                distance_Reciprocal,
+            )
+        };
     }
 
     // Update the  bodies' velocities

@@ -1,7 +1,7 @@
 #[derive(Clone, Debug)]
 struct Body {
-    position: [f64; 3],
-    velocity: [f64; 3],
+    position: Vec3, //[f64; 3],
+    velocity: Vec3, //[f64; 3],
     mass: f64,
 }
 
@@ -20,63 +20,63 @@ const STARTING_STATE: [Body; BODIES_COUNT] = [
     // Sun
     Body {
         mass: SOLAR_MASS,
-        position: [0.; 3],
-        velocity: [0.; 3],
+        position: Vec3::default(),
+        velocity: Vec3::default(),
     },
     // Jupiter
     Body {
-        position: [
+        position: Vec3::from_3_array([
             4.841_431_442_464_72e0,
             -1.160_320_044_027_428_4e0,
             -1.036_220_444_711_231_1e-1,
-        ],
-        velocity: [
+        ]),
+        velocity: Vec3::from_3_array([
             1.660_076_642_744_037e-3 * DAYS_PER_YEAR,
             7.699_011_184_197_404e-3 * DAYS_PER_YEAR,
             -6.904_600_169_720_63e-5 * DAYS_PER_YEAR,
-        ],
+        ]),
         mass: 9.547_919_384_243_266e-4 * SOLAR_MASS,
     },
     // Saturn
     Body {
-        position: [
+        position: Vec3::from_3_array([
             8.343_366_718_244_58e0,
             4.124_798_564_124_305e0,
             -4.035_234_171_143_214e-1,
-        ],
-        velocity: [
+        ]),
+        velocity: Vec3::from_3_array([
             -2.767_425_107_268_624e-3 * DAYS_PER_YEAR,
             4.998_528_012_349_172e-3 * DAYS_PER_YEAR,
             2.304_172_975_737_639_3e-5 * DAYS_PER_YEAR,
-        ],
+        ]),
         mass: 2.858_859_806_661_308e-4 * SOLAR_MASS,
     },
     // Uranus
     Body {
-        position: [
+        position: Vec3::from_3_array([
             1.289_436_956_213_913_1e1,
             -1.511_115_140_169_863_1e1,
             -2.233_075_788_926_557_3e-1,
-        ],
-        velocity: [
+        ]),
+        velocity: Vec3::from_3_array([
             2.964_601_375_647_616e-3 * DAYS_PER_YEAR,
             2.378_471_739_594_809_5e-3 * DAYS_PER_YEAR,
             -2.965_895_685_402_375_6e-5 * DAYS_PER_YEAR,
-        ],
+        ]),
         mass: 4.366_244_043_351_563e-5 * SOLAR_MASS,
     },
     // Neptune
     Body {
-        position: [
+        position: Vec3::from_3_array([
             1.537_969_711_485_091_1e1,
             -2.591_931_460_998_796_4e1,
             1.792_587_729_503_711_8e-1,
-        ],
-        velocity: [
+        ]),
+        velocity: Vec3::from_3_array([
             2.680_677_724_903_893_2e-3 * DAYS_PER_YEAR,
             1.628_241_700_382_423e-3 * DAYS_PER_YEAR,
             -9.515_922_545_197_159e-5 * DAYS_PER_YEAR,
-        ],
+        ]),
         mass: 5.151_389_020_466_114_5e-5 * SOLAR_MASS,
     },
 ];
@@ -87,7 +87,7 @@ fn sqr(x: f64) -> f64 {
 
 fn offset_momentum(bodies: &mut [Body; BODIES_COUNT]) {
     let (sun, planets) = bodies.split_first_mut().unwrap();
-    sun.velocity = [0.; 3];
+    sun.velocity = Vec3::default();
     for planet in planets {
         for m in 0..3 {
             sun.velocity[m] -= planet.velocity[m] * planet.mass / SOLAR_MASS;
@@ -160,9 +160,11 @@ fn advance(bodies: &mut [Body; BODIES_COUNT]) {
 
     // Update the  bodies' positions
     for body in bodies {
-        for (m, pos) in body.position.iter_mut().enumerate() {
-            *pos += TIMESTEP * body.velocity[m]
-        }
+        // for (m, pos) in body.position.iter_mut().enumerate() {
+        //     *pos += TIMESTEP * body.velocity[m]
+        // }
+
+        body.position += body.velocity.scale(TIMESTEP)
     }
 }
 
@@ -206,6 +208,41 @@ mod tests {
     }
 
     #[test]
+    fn it_supports_equality() {
+        assert!(
+            Vec3 {
+                x: 1.,
+                y: 10.,
+                z: 100.,
+            } == Vec3 {
+                x: 1.,
+                y: 10.,
+                z: 100.,
+            }
+        )
+    }
+
+    #[test]
+    fn it_can_be_constructed_from_a_3_array() {
+        let some_vec = Vec3::from_3_array([1., 2., 3.]);
+        assert!(some_vec.x == 1.);
+        assert!(some_vec.y == 2.);
+        assert!(some_vec.z == 3.);
+    }
+
+    #[test]
+    fn it_can_be_accessed_like_3_array() {
+        let some_vec = Vec3 {
+            x: 1.,
+            y: 2.,
+            z: 3.,
+        };
+        assert!(some_vec[0] == 1.);
+        assert!(some_vec[1] == 2.);
+        assert!(some_vec[2] == 3.);
+    }
+
+    #[test]
     fn it_can_be_added_to_another_vec3() {
         let unit = Vec3 {
             x: 1.,
@@ -223,9 +260,75 @@ mod tests {
         assert!(added.y == 3.);
         assert!(added.z == 4.);
     }
+
+    #[test]
+    fn it_can_be_subtracted_from_another_vec3() {
+        let big = Vec3 {
+            x: 10.,
+            y: 100.,
+            z: 1000.,
+        };
+        let small = Vec3 {
+            x: 9.,
+            y: 99.,
+            z: 999.,
+        };
+
+        assert!(
+            big - small
+                == Vec3 {
+                    x: 1.,
+                    y: 1.,
+                    z: 1.
+                }
+        );
+        assert!(
+            small - big
+                == Vec3 {
+                    x: -1.,
+                    y: -1.,
+                    z: -1.
+                }
+        );
+    }
+
+    #[test]
+    fn it_can_be_negated() {
+        let v1 = Vec3 {
+            x: 1.,
+            y: 20.,
+            z: 300.,
+        };
+
+        assert!(
+            -v1 == Vec3 {
+                x: -1.,
+                y: -20.,
+                z: -300.
+            }
+        );
+
+        #[test]
+        fn it_can_be_multipled_by_an_f64() {
+            let v1 = Vec3 {
+                x: 1.,
+                y: 20.,
+                z: 300.,
+            };
+
+            assert!(
+                v1.scale(10.)
+                    == Vec3 {
+                        x: 10.,
+                        y: 200.,
+                        z: 3000.
+                    }
+            );
+        }
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct Vec3 {
     x: f64,
     y: f64,
@@ -242,6 +345,24 @@ impl Default for Vec3 {
     }
 }
 
+impl Vec3 {
+    fn from_3_array(arr: [f64; 3]) -> Vec3 {
+        Vec3 {
+            x: arr[0],
+            y: arr[1],
+            z: arr[2],
+        }
+    }
+
+    fn scale(self, scalar: f64) -> Vec3 {
+        Vec3 {
+            x: scalar * self.x,
+            y: scalar * self.y,
+            z: scalar * self.z,
+        }
+    }
+}
+
 impl std::ops::Add for Vec3 {
     type Output = Vec3;
     fn add(self, other: Vec3) -> Vec3 {
@@ -250,5 +371,76 @@ impl std::ops::Add for Vec3 {
             y: self.y + other.y,
             z: self.z + other.z,
         }
+    }
+}
+
+impl std::ops::Sub for Vec3 {
+    type Output = Vec3;
+    fn sub(self, other: Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x - other.x,
+            y: self.y - other.y,
+            z: self.z - other.z,
+        }
+    }
+}
+
+impl std::ops::Neg for Vec3 {
+    type Output = Vec3;
+    fn neg(self) -> Vec3 {
+        Vec3 {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
+    }
+}
+
+impl std::cmp::PartialEq for Vec3 {
+    fn eq(&self, other: &Vec3) -> bool {
+        self.x == other.x && self.y == other.y && self.z == other.z
+    }
+}
+
+impl Eq for Vec3 {}
+
+impl std::ops::Index<usize> for Vec3 {
+    type Output = f64;
+
+    fn index(&self, index: usize) -> &f64 {
+        match index {
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
+            index => panic!(
+                "Unknown value {} for index found: must be in 0, 1, 2",
+                index
+            ),
+        }
+    }
+}
+
+impl std::ops::IndexMut<usize> for Vec3 {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        println!("Accessing {:?}-side of vec3 mutably", index);
+        match index {
+            0 => &mut self.x,
+            1 => &mut self.y,
+            2 => &mut self.z,
+            index => panic!(
+                "Unknown value {} for index found: must be in 0, 1, 2",
+                index
+            ),
+        }
+    }
+}
+
+impl std::ops::AddAssign for Vec3 {
+    fn add_assign(&mut self, other: Vec3) {
+        *self = Vec3 {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        };
     }
 }

@@ -180,3 +180,75 @@ fn main() {
     print!("Energy after {} steps: ", num_steps);
     output_energy(&mut solar_bodies);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_default_instances_to_0() {
+        let zeros = Vec3::default();
+        assert!(zeros.x == 0.);
+        assert!(zeros.y == 0.);
+        assert!(zeros.z == 0.);
+    }
+
+    #[test]
+    fn it_instantiates_with_args() {
+        let some_vec = Vec3 {
+            x: 1.,
+            y: 10.,
+            z: 100.,
+        };
+        assert!(some_vec.x == 1.);
+        assert!(some_vec.y == 10.);
+        assert!(some_vec.z == 100.);
+    }
+
+    #[test]
+    fn it_can_be_added_to_another_vec3() {
+        let unit = Vec3 {
+            x: 1.,
+            y: 1.,
+            z: 1.,
+        };
+        let one_two_three = Vec3 {
+            x: 1.,
+            y: 2.,
+            z: 3.,
+        };
+
+        let added = unit + one_two_three;
+        assert!(added.x == 2.);
+        assert!(added.y == 3.);
+        assert!(added.z == 4.);
+    }
+}
+
+#[derive(Debug)]
+struct Vec3 {
+    x: f64,
+    y: f64,
+    z: f64,
+}
+
+impl Default for Vec3 {
+    fn default() -> Vec3 {
+        Vec3 {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
+    }
+}
+
+impl std::ops::Add for Vec3 {
+    type Output = Vec3;
+    fn add(self, other: Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
+    }
+}

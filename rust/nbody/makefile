@@ -1,28 +1,35 @@
 ifndef NUM_STEPS
 	NUM_STEPS=50000000
 endif
-SRC_FILE=main.rs
-SRC_PATH=./src/$(SRC_FILE)
-BIN_FILE=./nbody-rust-1.run
-OPT_LVL=3
-TARGET_CPU=native
-CGN_UNITS=1
 
-.DEFAULT_GOAL := build_then_run
+# via `rustup show`
+TARGET_CPU=x86_64-apple-darwin
+
+BIN_NAME=nbody
+BINS_DIR=./target
+RELEASE_BIN=$(BINS_DIR)/$(TARGET_CPU)/release/$(BIN_NAME)
+DEBUG_BIN=$(BINS_DIR)/$(TARGET_CPU)/debug/$(BIN_NAME)
+
+.DEFAULT_GOAL := build_release_then_run
 
 clean:
-	rm $(BIN_FILE) | true
+	rm -r $(BINS_DIR) | true
 
-build: clean
-	rustc -C opt-level=$(OPT_LVL) \
-		-C target-cpu=$(TARGET_CPU) \
-		-C codegen-units=$(CGN_UNITS) \
-    	$(SRC_PATH) -o $(BIN_FILE)
+build_debug: clean
+	cargo build
 
-build_then_run: build run
+build_release: clean
+	cargo build --release
+
+build_release_then_run: build_release run
+
+build_debug_then_run_debug: build_debug run_debug
 
 run:
-	$(BIN_FILE) $(NUM_STEPS)
+	$(RELEASE_BIN) $(NUM_STEPS)
 
-measure_speed:
-	hyperfine "$(BIN_FILE) $(NUM_STEPS)"
+run_debug:
+	$(DEBUG_BIN) $(NUM_STEPS)
+
+measure_speed: build_release
+	hyperfine "$(RELEASE_BIN) $(NUM_STEPS)"

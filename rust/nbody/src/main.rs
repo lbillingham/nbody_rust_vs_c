@@ -1,243 +1,157 @@
-#![allow( //  let us break formatting for C-closeness
-    non_upper_case_globals,
-    non_camel_case_types,
-    non_snake_case,
-)]
-
-use std::arch::x86_64::*;
-use std::f64::consts::PI;
-
-#[repr(C)] // layout memory same as C, so same mem hacks work
-struct body {
+#[derive(Clone, Debug)]
+struct Body {
     position: [f64; 3],
     velocity: [f64; 3],
     mass: f64,
 }
 
-const SOLAR_MASS: f64 = 4. * PI * PI;
-const DAYS_PER_YEAR: f64 = 365.24;
-const TIMESTEP: f64 = 0.01; // in days... right??
 const BODIES_COUNT: usize = 5;
+const TIMESTEP: f64 = 0.01; // in days... right??
 
-const STARTING_STATE: [body; BODIES_COUNT] = [
-    body {
-        // Sun
+const SOLAR_MASS: f64 = 4. * std::f64::consts::PI * std::f64::consts::PI;
+const DAYS_PER_YEAR: f64 = 365.24;
+
+const INTERACTIONS: usize = (BODIES_COUNT * (BODIES_COUNT - 1)) / 2;
+// const ROUNDED_INTERACTIONS_COUNT: usize = INTERACTIONS_COUNT + (INTERACTIONS_COUNT % 2);
+// const TIMESTEP: f64 = 0.01; // in days... right??
+
+/// Initial state of the simulation.
+const STARTING_STATE: [Body; BODIES_COUNT] = [
+    // Sun
+    Body {
         mass: SOLAR_MASS,
         position: [0.; 3],
         velocity: [0.; 3],
     },
-    body {
-        // Jupiter
+    // Jupiter
+    Body {
         position: [
-            4.84143144246472090e+00,
-            -1.16032004402742839e+00,
-            -1.03622044471123109e-01,
+            4.841_431_442_464_72e0,
+            -1.160_320_044_027_428_4e0,
+            -1.036_220_444_711_231_1e-1,
         ],
         velocity: [
-            1.66007664274403694e-03 * DAYS_PER_YEAR,
-            7.69901118419740425e-03 * DAYS_PER_YEAR,
-            -6.90460016972063023e-05 * DAYS_PER_YEAR,
+            1.660_076_642_744_037e-3 * DAYS_PER_YEAR,
+            7.699_011_184_197_404e-3 * DAYS_PER_YEAR,
+            -6.904_600_169_720_63e-5 * DAYS_PER_YEAR,
         ],
-        mass: 9.54791938424326609e-04 * SOLAR_MASS,
+        mass: 9.547_919_384_243_266e-4 * SOLAR_MASS,
     },
-    body {
-        // Saturn
+    // Saturn
+    Body {
         position: [
-            8.34336671824457987e+00,
-            4.12479856412430479e+00,
-            -4.03523417114321381e-01,
+            8.343_366_718_244_58e0,
+            4.124_798_564_124_305e0,
+            -4.035_234_171_143_214e-1,
         ],
         velocity: [
-            -2.76742510726862411e-03 * DAYS_PER_YEAR,
-            4.99852801234917238e-03 * DAYS_PER_YEAR,
-            2.30417297573763929e-05 * DAYS_PER_YEAR,
+            -2.767_425_107_268_624e-3 * DAYS_PER_YEAR,
+            4.998_528_012_349_172e-3 * DAYS_PER_YEAR,
+            2.304_172_975_737_639_3e-5 * DAYS_PER_YEAR,
         ],
-        mass: 2.85885980666130812e-04 * SOLAR_MASS,
+        mass: 2.858_859_806_661_308e-4 * SOLAR_MASS,
     },
-    body {
-        // Uranus
+    // Uranus
+    Body {
         position: [
-            1.28943695621391310e+01,
-            -1.51111514016986312e+01,
-            -2.23307578892655734e-01,
+            1.289_436_956_213_913_1e1,
+            -1.511_115_140_169_863_1e1,
+            -2.233_075_788_926_557_3e-1,
         ],
         velocity: [
-            2.96460137564761618e-03 * DAYS_PER_YEAR,
-            2.37847173959480950e-03 * DAYS_PER_YEAR,
-            -2.96589568540237556e-05 * DAYS_PER_YEAR,
+            2.964_601_375_647_616e-3 * DAYS_PER_YEAR,
+            2.378_471_739_594_809_5e-3 * DAYS_PER_YEAR,
+            -2.965_895_685_402_375_6e-5 * DAYS_PER_YEAR,
         ],
-        mass: 4.36624404335156298e-05 * SOLAR_MASS,
+        mass: 4.366_244_043_351_563e-5 * SOLAR_MASS,
     },
-    body {
-        // Neptune
+    // Neptune
+    Body {
         position: [
-            1.53796971148509165e+01,
-            -2.59193146099879641e+01,
-            1.79258772950371181e-01,
+            1.537_969_711_485_091_1e1,
+            -2.591_931_460_998_796_4e1,
+            1.792_587_729_503_711_8e-1,
         ],
         velocity: [
-            2.68067772490389322e-03 * DAYS_PER_YEAR,
-            1.62824170038242295e-03 * DAYS_PER_YEAR,
-            -9.51592254519715870e-05 * DAYS_PER_YEAR,
+            2.680_677_724_903_893_2e-3 * DAYS_PER_YEAR,
+            1.628_241_700_382_423e-3 * DAYS_PER_YEAR,
+            -9.515_922_545_197_159e-5 * DAYS_PER_YEAR,
         ],
-        mass: 5.15138902046611451e-05 * SOLAR_MASS,
+        mass: 5.151_389_020_466_114_5e-5 * SOLAR_MASS,
     },
 ];
 
-fn offset_Momentum(bodies: &mut [body; BODIES_COUNT]) {
-    for i in 0..BODIES_COUNT {
+fn sqr(x: f64) -> f64 {
+    x * x
+}
+
+fn offset_momentum(bodies: &mut [Body; BODIES_COUNT]) {
+    let (sun, planets) = bodies.split_first_mut().unwrap();
+    sun.velocity = [0.; 3];
+    for planet in planets {
         for m in 0..3 {
-            bodies[0].velocity[m] -= bodies[i].velocity[m] * bodies[i].mass / SOLAR_MASS;
+            sun.velocity[m] -= planet.velocity[m] * planet.mass / SOLAR_MASS;
         }
     }
 }
 
-fn output_Energy(bodies: &mut [body; BODIES_COUNT]) {
-    let mut energy: f64 = 0.;
-    for i in 0..BODIES_COUNT {
-        energy += 0.5
-            * bodies[i].mass
-            * (bodies[i].velocity[0] * bodies[i].velocity[0]
-                + bodies[i].velocity[1] * bodies[i].velocity[1]
-                + bodies[i].velocity[2] * bodies[i].velocity[2]);
+fn output_energy(bodies: &mut [Body; BODIES_COUNT]) {
+    let mut energy = 0.;
 
-        for j in i + 1..BODIES_COUNT {
-            let mut position_Delta = [0.; 3];
-
-            for m in 0..3 {
-                position_Delta[m] = bodies[i].position[m] - bodies[j].position[m];
-            }
-
-            energy -= bodies[i].mass * bodies[j].mass
+    for (i, body) in bodies.iter().enumerate() {
+        // kinetic energy of each body
+        energy += 0.5 * (sqr(body.velocity[0]) + sqr(body.velocity[1]) + sqr(body.velocity[2]));
+        // potential energy between pairs of bodies
+        for body2 in &bodies[i + 1..BODIES_COUNT] {
+            energy -= body.mass * body2.mass
                 / f64::sqrt(
-                    position_Delta[0] * position_Delta[0]
-                        + position_Delta[1] * position_Delta[1]
-                        + position_Delta[2] * position_Delta[2],
+                    sqr(body.position[0] - body2.position[0])
+                        + sqr(body.position[1] - body2.position[1])
+                        + sqr(body.position[2] - body2.position[2]),
                 )
         }
     }
-
     // Output the total energy of the system.
     println!("{:.9}", energy);
 }
 
-const INTERACTIONS_COUNT: usize = (BODIES_COUNT * (BODIES_COUNT - 1)) / 2;
-const ROUNDED_INTERACTIONS_COUNT: usize = INTERACTIONS_COUNT + (INTERACTIONS_COUNT % 2);
-
-#[derive(Copy, Clone)]
-#[repr(C)]
-union Interactions {
-    scalars: [f64; ROUNDED_INTERACTIONS_COUNT],
-    vectors: [__m128d; ROUNDED_INTERACTIONS_COUNT / 2],
-}
-
-impl Interactions {
-    // Returns a safe reference to storage as `f64`s
-    pub fn as_scalars(&mut self) -> &[f64; ROUNDED_INTERACTIONS_COUNT] {
-        // Safety: the in-memory representation of `f64` and `__m128d` is
-        // compatible, so access to the union members is safe in any
-        // order.
-        unsafe { &self.scalars }
-    }
-
-    // Returns a safe mutable reference to storage as `f64`s
-    pub fn as_mut_scalars(&mut self) -> &mut [f64; ROUNDED_INTERACTIONS_COUNT] {
-        // Safety: the in-memory representation of `f64` and `__m128d` is
-        // compatible, so access to the union members is safe in any
-        // order.
-        unsafe { &mut self.scalars }
-    }
-
-    // Returns a safe reference to storage as `__m128`s
-    pub fn as_vectors(&mut self) -> &[__m128d; ROUNDED_INTERACTIONS_COUNT / 2] {
-        // Safety: the in-memory representation of `f64` and `__m128d` is
-        // compatible, so access to the union members is safe in any
-        // order.
-        unsafe { &self.vectors }
-    }
-
-    // Returns a safe mutable reference to storage as `__m128`s
-    pub fn as_mut_vectors(&mut self) -> &mut [__m128d; ROUNDED_INTERACTIONS_COUNT / 2] {
-        // Safety: the in-memory representation of `f64` and `__m128d` is
-        // compatible, so access to the union members is safe in any
-        // order.
-        unsafe { &mut self.vectors }
-    }
-}
-
-#[cfg(target_feature = "sse2")]
-fn advance(
-    bodies: &mut [body; BODIES_COUNT],
-    position_Deltas: &mut [Interactions; 3],
-    magnitudes: &mut Interactions,
-) {
-    // Calc position differences between each interacting body pair
+// Steps the simultion forward by 1 timestep
+fn advance(bodies: &mut [Body; BODIES_COUNT]) {
+    // Calc position differences between each interacting pody pair
+    let mut position_deltas = [[0.; 3]; INTERACTIONS];
     {
         let mut k = 0;
         for i in 0..BODIES_COUNT - 1 {
             for j in i + 1..BODIES_COUNT {
-                for m in 0..3 {
-                    position_Deltas[m].as_mut_scalars()[k] =
-                        bodies[i].position[m] - bodies[j].position[m];
+                for (m, pd) in position_deltas[k].iter_mut().enumerate() {
+                    *pd = bodies[i].position[m] - bodies[j].position[m];
                 }
                 k += 1;
             }
         }
     }
     // Calc force magnitudes between each bodies
-    //      load 2 bodies' position differences into position_Delta
-    for i in 0..ROUNDED_INTERACTIONS_COUNT / 2 {
-        let mut position_Delta = unsafe { [_mm_setzero_pd(); 3] };
-        for m in 0..3 {
-            position_Delta[m] = position_Deltas[m].as_vectors()[i]
+    let magnitudes = {
+        let mut magitudes = [0.; INTERACTIONS];
+        for (i, mag) in magitudes.iter_mut().enumerate() {
+            let distance_squared = sqr(position_deltas[i][2])
+                + sqr(position_deltas[i][1])
+                + sqr(position_deltas[i][0]);
+            *mag = TIMESTEP / (distance_squared * distance_squared.sqrt());
         }
-
-        let distance_Squared: __m128d = unsafe {
-            _mm_add_pd(
-                _mm_add_pd(
-                    _mm_mul_pd(position_Delta[0], position_Delta[0]),
-                    _mm_mul_pd(position_Delta[1], position_Delta[1]),
-                ),
-                _mm_mul_pd(position_Delta[2], position_Delta[2]),
-            )
-        };
-
-        // approx f64 sqrt by doing f32 sqrt then Newton Raphson
-        let mut distance_Reciprocal =
-            unsafe { _mm_cvtps_pd(_mm_rsqrt_ps(_mm_cvtpd_ps(distance_Squared))) };
-
-        for _ in 0..2 {
-            distance_Reciprocal = unsafe {
-                _mm_sub_pd(
-                    _mm_mul_pd(distance_Reciprocal, _mm_set1_pd(1.5)),
-                    _mm_mul_pd(
-                        _mm_mul_pd(
-                            _mm_mul_pd(_mm_set1_pd(0.5), distance_Squared),
-                            distance_Reciprocal,
-                        ),
-                        _mm_mul_pd(distance_Reciprocal, distance_Reciprocal),
-                    ),
-                )
-            };
-        }
-        magnitudes.as_mut_vectors()[i] = unsafe {
-            _mm_mul_pd(
-                _mm_div_pd(_mm_set1_pd(0.01), distance_Squared),
-                distance_Reciprocal,
-            )
-        };
-    }
+        magitudes
+    };
 
     // Update the  bodies' velocities
     {
         let mut k = 0;
-        for i in 0..BODIES_COUNT {
+        for i in 0..BODIES_COUNT - 1 {
             for j in i + 1..BODIES_COUNT {
-                let i_mass_magnitude = bodies[i].mass * magnitudes.as_scalars()[k];
-                let j_mass_magnitude = bodies[j].mass * magnitudes.as_scalars()[k];
-                for m in 0..3 {
-                    bodies[i].velocity[m] -= position_Deltas[m].as_scalars()[k] * j_mass_magnitude;
-                    bodies[j].velocity[m] += position_Deltas[m].as_scalars()[k] * i_mass_magnitude;
+                let i_mass_magnitude = bodies[i].mass * magnitudes[k];
+                let j_mass_magnitude = bodies[j].mass * magnitudes[k];
+                for (m, pd) in position_deltas[k].iter().enumerate() {
+                    bodies[i].velocity[m] -= *pd * j_mass_magnitude;
+                    bodies[j].velocity[m] += *pd * i_mass_magnitude;
                 }
                 k += 1;
             }
@@ -245,30 +159,24 @@ fn advance(
     }
 
     // Update the  bodies' positions
-    for i in 0..BODIES_COUNT {
-        for m in 0..3 {
-            bodies[i].position[m] += TIMESTEP * bodies[i].velocity[m];
+    for body in bodies {
+        for (m, pos) in body.position.iter_mut().enumerate() {
+            *pos += TIMESTEP * body.velocity[m]
         }
     }
 }
 
 fn main() {
-    let mut solar_Bodies = STARTING_STATE;
-
-    let mut position_Deltas: [Interactions; 3] = [Interactions {
-        scalars: [0.; ROUNDED_INTERACTIONS_COUNT],
-    }; 3];
-
-    let mut magnitudes: Interactions = Interactions {
-        scalars: [0.; ROUNDED_INTERACTIONS_COUNT],
-    };
-    offset_Momentum(&mut solar_Bodies);
-    print!("initial energy: ");
-    output_Energy(&mut solar_Bodies);
     let num_steps = std::env::args().nth(1).unwrap().parse().unwrap();
+
+    let mut solar_bodies = STARTING_STATE;
+
+    offset_momentum(&mut solar_bodies);
+    print!("initial energy: ");
+    output_energy(&mut solar_bodies);
     for _ in 0..num_steps {
-        advance(&mut solar_Bodies, &mut position_Deltas, &mut magnitudes)
+        advance(&mut solar_bodies)
     }
     print!("Energy after {} steps: ", num_steps);
-    output_Energy(&mut solar_Bodies);
+    output_energy(&mut solar_bodies);
 }

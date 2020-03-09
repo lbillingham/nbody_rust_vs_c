@@ -20,63 +20,71 @@ const STARTING_STATE: [Body; BODIES_COUNT] = [
     // Sun
     Body {
         mass: SOLAR_MASS,
-        position: Vec3::default(),
-        velocity: Vec3::default(),
+        position: Vec3 {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+        },
+        velocity: Vec3 {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+        },
     },
     // Jupiter
     Body {
-        position: Vec3::from_3_array([
-            4.841_431_442_464_72e0,
-            -1.160_320_044_027_428_4e0,
-            -1.036_220_444_711_231_1e-1,
-        ]),
-        velocity: Vec3::from_3_array([
-            1.660_076_642_744_037e-3 * DAYS_PER_YEAR,
-            7.699_011_184_197_404e-3 * DAYS_PER_YEAR,
-            -6.904_600_169_720_63e-5 * DAYS_PER_YEAR,
-        ]),
+        position: Vec3 {
+            x: 4.841_431_442_464_72e0,
+            y: -1.160_320_044_027_428_4e0,
+            z: -1.036_220_444_711_231_1e-1,
+        },
+        velocity: Vec3 {
+            x: 1.660_076_642_744_037e-3 * DAYS_PER_YEAR,
+            y: 7.699_011_184_197_404e-3 * DAYS_PER_YEAR,
+            z: -6.904_600_169_720_63e-5 * DAYS_PER_YEAR,
+        },
         mass: 9.547_919_384_243_266e-4 * SOLAR_MASS,
     },
     // Saturn
     Body {
-        position: Vec3::from_3_array([
-            8.343_366_718_244_58e0,
-            4.124_798_564_124_305e0,
-            -4.035_234_171_143_214e-1,
-        ]),
-        velocity: Vec3::from_3_array([
-            -2.767_425_107_268_624e-3 * DAYS_PER_YEAR,
-            4.998_528_012_349_172e-3 * DAYS_PER_YEAR,
-            2.304_172_975_737_639_3e-5 * DAYS_PER_YEAR,
-        ]),
+        position: Vec3 {
+            x: 8.343_366_718_244_58e0,
+            y: 4.124_798_564_124_305e0,
+            z: -4.035_234_171_143_214e-1,
+        },
+        velocity: Vec3 {
+            x: -2.767_425_107_268_624e-3 * DAYS_PER_YEAR,
+            y: 4.998_528_012_349_172e-3 * DAYS_PER_YEAR,
+            z: 2.304_172_975_737_639_3e-5 * DAYS_PER_YEAR,
+        },
         mass: 2.858_859_806_661_308e-4 * SOLAR_MASS,
     },
     // Uranus
     Body {
-        position: Vec3::from_3_array([
-            1.289_436_956_213_913_1e1,
-            -1.511_115_140_169_863_1e1,
-            -2.233_075_788_926_557_3e-1,
-        ]),
-        velocity: Vec3::from_3_array([
-            2.964_601_375_647_616e-3 * DAYS_PER_YEAR,
-            2.378_471_739_594_809_5e-3 * DAYS_PER_YEAR,
-            -2.965_895_685_402_375_6e-5 * DAYS_PER_YEAR,
-        ]),
+        position: Vec3 {
+            x: 1.289_436_956_213_913_1e1,
+            y: -1.511_115_140_169_863_1e1,
+            z: -2.233_075_788_926_557_3e-1,
+        },
+        velocity: Vec3 {
+            x: 2.964_601_375_647_616e-3 * DAYS_PER_YEAR,
+            y: 2.378_471_739_594_809_5e-3 * DAYS_PER_YEAR,
+            z: -2.965_895_685_402_375_6e-5 * DAYS_PER_YEAR,
+        },
         mass: 4.366_244_043_351_563e-5 * SOLAR_MASS,
     },
     // Neptune
     Body {
-        position: Vec3::from_3_array([
-            1.537_969_711_485_091_1e1,
-            -2.591_931_460_998_796_4e1,
-            1.792_587_729_503_711_8e-1,
-        ]),
-        velocity: Vec3::from_3_array([
-            2.680_677_724_903_893_2e-3 * DAYS_PER_YEAR,
-            1.628_241_700_382_423e-3 * DAYS_PER_YEAR,
-            -9.515_922_545_197_159e-5 * DAYS_PER_YEAR,
-        ]),
+        position: Vec3 {
+            x: 1.537_969_711_485_091_1e1,
+            y: -2.591_931_460_998_796_4e1,
+            z: 1.792_587_729_503_711_8e-1,
+        },
+        velocity: Vec3 {
+            x: 2.680_677_724_903_893_2e-3 * DAYS_PER_YEAR,
+            y: 1.628_241_700_382_423e-3 * DAYS_PER_YEAR,
+            z: -9.515_922_545_197_159e-5 * DAYS_PER_YEAR,
+        },
         mass: 5.151_389_020_466_114_5e-5 * SOLAR_MASS,
     },
 ];
@@ -307,24 +315,24 @@ mod tests {
                 z: -300.
             }
         );
+    }
 
-        #[test]
-        fn it_can_be_multipled_by_an_f64() {
-            let v1 = Vec3 {
-                x: 1.,
-                y: 20.,
-                z: 300.,
-            };
+    #[test]
+    fn it_can_be_multipled_by_an_f64() {
+        let v1 = Vec3 {
+            x: 1.,
+            y: 20.,
+            z: 300.,
+        };
 
-            assert!(
-                v1.scale(10.)
-                    == Vec3 {
-                        x: 10.,
-                        y: 200.,
-                        z: 3000.
-                    }
-            );
-        }
+        assert!(
+            v1.scale(10.)
+                == Vec3 {
+                    x: 10.,
+                    y: 200.,
+                    z: 3000.
+                }
+        );
     }
 }
 
@@ -422,7 +430,6 @@ impl std::ops::Index<usize> for Vec3 {
 
 impl std::ops::IndexMut<usize> for Vec3 {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        println!("Accessing {:?}-side of vec3 mutably", index);
         match index {
             0 => &mut self.x,
             1 => &mut self.y,

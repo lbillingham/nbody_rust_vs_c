@@ -21,6 +21,8 @@ build_debug: clean
 build_release: clean
 	cargo build --release
 
+build: build_release
+
 build_release_then_run: build_release run
 
 build_debug_then_run_debug: build_debug run_debug
